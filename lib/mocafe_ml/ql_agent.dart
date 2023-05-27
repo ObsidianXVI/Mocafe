@@ -5,15 +5,8 @@ class MocafeQLAgent extends QLAgent {
   final List<ArgSet> argSets;
   final List<MocafeState> mocafeStates;
 
-  /// Key is a 3-dimensional vector (stateIndex, actionIndex, argSetIndex),
-  /// which will be called a [MocafeQVector] henceforth.
-  /// Respective value is the Q-value for that MocafeQVector.
-  /// As such, a 3-dimensional Q-table is implemented.
-  final Map<MocafeQVector, double> qTable;
-
   MocafeQLAgent({required this.env, required super.runConfigs})
       : argSets = env.paramSpace.argSets,
-        qTable = env.initialiseQTable(),
         mocafeStates = env.stateSpace.states.whereType<MocafeState>().toList(),
         super(env: env);
 
@@ -65,9 +58,9 @@ class MocafeQLAgent extends QLAgent {
       argSet: selectedArgSet,
     );
 
-    final double previousValueOfQVector = qTable[selectedQVector] ?? 0;
+    final double previousValueOfQVector = env.lookupQValue(selectedQVector);
     final double updatedValueOfQVector = updatedQValue;
-    qTable[selectedQVector] = updatedQValue;
+    env.updateQValue(selectedQVector, updatedQValue);
 
     // complete the info about the action taken
     actionResult
@@ -83,30 +76,22 @@ class MocafeQLAgent extends QLAgent {
     Action actionToBeTaken,
     ArgSet argSetUsed,
   ) {
-    /* print(qTable.entries
-        .where((e) => e.value > 0)
-        .map((e) => "${e.key.toVectorStr()}\n${e.value}\n")
-        .join()); */
-    final bool has = qTable.containsKey(MocafeQVector(
+/*     final bool has = env.qTable.containsKey(MocafeQVector(
       mocafeState: stateIn,
       action: actionToBeTaken,
       argSet: argSetUsed,
-    ));
-    final MocafeState state = MocafeState.current(env);
-    final Action action =
+    )); */
+    // final MocafeState state = MocafeState.current(env);
+    /* final Action action =
         actions.firstWhere((Action a) => a == actionToBeTaken);
-    final ArgSet argSet = argSets.firstWhere((ArgSet arg) => arg == argSetUsed);
-    final MocafeQVector qTableKey = MocafeQVector(
-      mocafeState: state,
-      action: action,
-      argSet: argSet,
+    final ArgSet argSet = argSets.firstWhere((ArgSet arg) => arg == argSetUsed); */
+    return env.lookupQValue(
+      MocafeQVector(
+        mocafeState: stateIn,
+        action: actionToBeTaken,
+        argSet: argSetUsed,
+      ),
     );
-    if (qTable.containsKey(qTableKey)) {
-      return qTable[qTableKey]!;
-    } else {
-      qTable[qTableKey] = 0;
-      return 0;
-    }
   }
 
   double computeMaxFutureQValue(MocafeState newState) {

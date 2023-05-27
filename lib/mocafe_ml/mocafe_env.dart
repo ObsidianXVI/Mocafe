@@ -9,14 +9,16 @@ class MocafeEnv extends DevelopmentEnv {
     required super.paramSpace,
     required super.runConfigs,
     required super.stateSpace,
+    required super.enableDynamicQValueInitialiser,
     super.resourceConfigs,
     super.resourceManager,
     super.dataStore,
     super.networkConfigs,
     super.observatory,
+    super.qTableInitialiser,
   });
 
-  @override
+/*   @override
   Map<MocafeQVector, double> initialiseQTable() {
     Map<MocafeQVector, double> qTable = {};
     for (MocafeState state in stateSpace.states as List<MocafeState>) {
@@ -31,7 +33,7 @@ class MocafeEnv extends DevelopmentEnv {
       }
     }
     return qTable;
-  }
+  } */
 
   @override
   ActionResult performAction(Action<ArgSet> action, ArgSet argSet) {
