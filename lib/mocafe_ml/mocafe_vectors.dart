@@ -1,6 +1,6 @@
 part of mocafe.ml;
 
-class MocafeQVector extends QVector {
+class MocafeQVector extends QVector3D {
   final MocafeState mocafeState;
   final Action action;
   final ArgSet argSet;
@@ -12,7 +12,7 @@ class MocafeQVector extends QVector {
   }) : super(
           mocafeState,
           action,
-          dimensions: 3,
+          argSet,
           values: [mocafeState, action, argSet],
         );
 }

@@ -1,45 +1,28 @@
 part of mocafe.ml;
 
 class MocafeEnv extends DevelopmentEnv {
+  final QLRunConfigs qlRunConfigs;
   @override
   final MocafeGlobalState globalState = MocafeGlobalState();
 
   MocafeEnv({
     required super.actionSpace,
     required super.paramSpace,
-    required super.runConfigs,
     required super.stateSpace,
     required super.enableDynamicQValueInitialiser,
+    required this.qlRunConfigs,
     super.resourceConfigs,
     super.resourceManager,
     super.dataStore,
     super.networkConfigs,
     super.observatory,
     super.qTableInitialiser,
-  });
-
-/*   @override
-  Map<MocafeQVector, double> initialiseQTable() {
-    Map<MocafeQVector, double> qTable = {};
-    for (MocafeState state in stateSpace.states as List<MocafeState>) {
-      for (Action action in actionSpace.actions) {
-        for (ArgSet argSet in paramSpace.argSets) {
-          qTable[MocafeQVector(
-            mocafeState: state,
-            action: action,
-            argSet: argSet,
-          )] = 0;
-        }
-      }
-    }
-    return qTable;
-  } */
+  }) : super(runConfigs: qlRunConfigs);
 
   @override
   ActionResult performAction(Action<ArgSet> action, ArgSet argSet) {
     final MocafeState previouState = MocafeState.current(this);
-    //print(argSet.toInstanceLabel());
-    action.body(action.convertArgSet(argSet));
+    action.body(action.convertArgSet(argSet), this);
     final MocafeState newState = MocafeState.current(this);
     return ActionResult(
       previouState: previouState,
@@ -50,7 +33,14 @@ class MocafeEnv extends DevelopmentEnv {
     );
   }
 
-  double computeReward() => globalState.customerCount * currentPrice;
+  double computeReward() =>
+      globalState.customerCount * globalState.currentPrice;
+
+  @override
+  void advance(EnvReport report) {
+    qlRunConfigs.learningRate - qlRunConfigs.learningRateDecay;
+    super.advance(report);
+  }
 
   @override
   void reset() {}

@@ -1,7 +1,12 @@
 part of mocafe.ml;
 
 class IncreaseDrinkPrice extends Action<IncreaseDrinkPriceArgSet> {
-  IncreaseDrinkPrice() : super(body: (IncreaseDrinkPriceArgSet argSet) {});
+  IncreaseDrinkPrice()
+      : super(body: (ArgSet argSet, Environment env) {
+          argSet as IncreaseDrinkPriceArgSet;
+          env as MocafeEnv;
+          env.globalState.currentPrice += argSet.cents;
+        });
 }
 
 class IncreaseDrinkPriceArgSet extends ArgSet {
@@ -29,10 +34,20 @@ class IncreaseDrinkPriceArgSet extends ArgSet {
   String toInstanceLabel() {
     return "IncreaseDPArgSet<$cents>";
   }
+
+  @override
+  bool equalityComparator(Object other) {
+    return other is IncreaseDrinkPriceArgSet;
+  }
 }
 
 class DecreaseDrinkPrice extends Action<DecreaseDrinkPriceArgSet> {
-  DecreaseDrinkPrice() : super(body: (DecreaseDrinkPriceArgSet argSet) {});
+  DecreaseDrinkPrice()
+      : super(body: (ArgSet argSet, Environment env) {
+          argSet as DecreaseDrinkPriceArgSet;
+          env as MocafeEnv;
+          env.globalState.currentPrice -= argSet.cents;
+        });
 }
 
 class DecreaseDrinkPriceArgSet extends ArgSet {
@@ -59,5 +74,10 @@ class DecreaseDrinkPriceArgSet extends ArgSet {
   @override
   String toInstanceLabel() {
     return "DecreaseDPArgSet<$cents>";
+  }
+
+  @override
+  bool equalityComparator(Object other) {
+    return other is DecreaseDrinkPriceArgSet;
   }
 }

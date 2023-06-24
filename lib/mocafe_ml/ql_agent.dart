@@ -12,63 +12,95 @@ class MocafeQLAgent extends QLAgent {
 
   @override
   ActionResult perform([State? state]) {
-    state ??= MocafeState.current(env);
-    state as MocafeState;
-    if (state.isTerminal) throw TerminalStateException();
-    // fetch all available Q-values
-    final Map<MocafeQVector, double> qValuesOfState =
-        fetchHistoricalQValues(state);
+    try {
+      state ??= MocafeState.current(env);
+      state as MocafeState;
+      if (state.isTerminal) throw TerminalStateException();
+      // fetch all available Q-values
+      final Map<MocafeQVector, double> qValuesOfState =
+          fetchHistoricalQValues(state);
+      // find optimal action
+      final int comboIndex = qValuesOfState.values.toList().indexOfMaxValue();
+      final Action optimalAction =
+          qValuesOfState.keys.elementAt(comboIndex).action;
+      // apply action-selection policy to pick action
+      final Action selectedAction =
+          select<Action>(state.actionsAvailable, optimalAction);
+      final bool selectedActionIsRand = selectedAction == optimalAction;
 
-    // select action
-    final int comboIndex = qValuesOfState.values.toList().indexOfMaxValue();
-    final Action optimalAction =
-        qValuesOfState.keys.toList()[comboIndex].action;
-    final Action selectedAction =
-        select<Action>(state.actionsAvailable, optimalAction);
-    final bool selectedActionIsRand = selectedAction == optimalAction;
+      // fetch all argsets compatible with the chosen action
+      final Map<double, ArgSet> argSetQValues = {};
+      final List<ArgSet> compatibleArgSets = env.paramSpace.argSets
+          .where(selectedAction.isCompatibleWithArgSet)
+          .toList();
 
-    // select arg
-    final ArgSet optimalArgSet =
-        qValuesOfState.keys.toList()[comboIndex].argSet;
-    final ArgSet selectedArgSet = select<ArgSet>(argSets, optimalArgSet);
-    final bool selectedArgSetIsRand = selectedArgSet == optimalArgSet;
+      // fetch the historical Q-values of each argset
+      for (ArgSet argSet in compatibleArgSets) {
+        final double historicalQValue =
+            fetchHistoricalQValue(state, selectedAction, argSet);
+        argSetQValues.addAll({historicalQValue: argSet});
+      }
+/*       for (int i = 0; i < qValuesOfState.keys.length; i++) {
+        final MocafeQVector mocafeQVector = qValuesOfState.keys.elementAt(i);
+        if (selectedAction.isCompatibleWithArgSet(mocafeQVector.argSet)) {
+          argSetQValues.addAll({i: qValuesOfState.values.elementAt(i)});
+          compatibleArgSets.add(mocafeQVector.argSet);
+        }
+      } */
 
-    // perform action
-    final ActionResult actionResult = env.performAction(
-      selectedAction,
-      selectedArgSet,
-    );
-    final double reward = actionResult.reward;
+      // pick the argset with the highest Q-value
+      final ArgSet optimalArgSet = argSetQValues.values
+          .elementAt(argSetQValues.keys.toList().indexOfMaxValue());
+      // qValuesOfState.keys.elementAt().argSet;
+      final ArgSet selectedArgSet = optimalArgSet;
+      // select<ArgSet>(compatibleArgSets, optimalArgSet);
+      final bool selectedArgSetIsRand = false;
+      // selectedArgSet == optimalArgSet;
 
-    // calculate temporal difference
-    final MocafeState newState = MocafeState.current(env);
-    final double maxFutureValue = computeMaxFutureQValue(newState);
-    final double historicalQValue = qValuesOfState.values.toList()[comboIndex];
-    final double newQValue =
-        reward + runConfigs.discountFactor * maxFutureValue;
-    final double temporalDifference = newQValue - historicalQValue;
+      // perform action
+      final ActionResult actionResult = env.performAction(
+        selectedAction,
+        selectedArgSet,
+      );
 
-    // update q value in table
-    final double updatedQValue =
-        historicalQValue + runConfigs.learningRate * temporalDifference;
+      // observe reward
+      final double reward = actionResult.reward;
 
-    final MocafeQVector selectedQVector = MocafeQVector(
-      mocafeState: state,
-      action: selectedAction,
-      argSet: selectedArgSet,
-    );
+      // calculate temporal difference
+      final MocafeState newState = MocafeState.current(env);
+      final double maxFutureValue = computeMaxFutureQValue(newState);
+      final double historicalQValue =
+          qValuesOfState.values.toList()[comboIndex];
+      final double newQValue =
+          reward + runConfigs.discountFactor * maxFutureValue;
+      final double temporalDifference = newQValue - historicalQValue;
 
-    final double previousValueOfQVector = env.lookupQValue(selectedQVector);
-    final double updatedValueOfQVector = updatedQValue;
-    env.updateQValue(selectedQVector, updatedQValue);
+      // compute new Q-value
+      final double updatedQValue =
+          historicalQValue + runConfigs.learningRate * temporalDifference;
 
-    // complete the info about the action taken
-    actionResult
-      ..selectedQVector = selectedQVector
-      ..oldQValueOfSelectedQVect = previousValueOfQVector
-      ..newQValueOfSelectedQVect = updatedValueOfQVector
-      ..isRandom = (selectedActionIsRand || selectedArgSetIsRand);
-    return actionResult;
+      final MocafeQVector selectedQVector = MocafeQVector(
+        mocafeState: state,
+        action: selectedAction,
+        argSet: selectedArgSet,
+      );
+
+      // update Q-value of chosen action and argset in Q-table
+      final double previousValueOfQVector = env.lookupQValue(selectedQVector);
+      final double updatedValueOfQVector = updatedQValue;
+      env.updateQValue(selectedQVector, updatedQValue);
+
+      // report info about this timestep for data collection purposes
+      actionResult
+        ..selectedQVector = selectedQVector
+        ..oldQValueOfSelectedQVect = previousValueOfQVector
+        ..newQValueOfSelectedQVect = updatedValueOfQVector
+        //..isRandom = (selectedActionIsRand || selectedArgSetIsRand);
+        ..isRandom = selectedActionIsRand;
+      return actionResult;
+    } catch (e) {
+      rethrow;
+    }
   }
 
   double fetchHistoricalQValue(
@@ -104,7 +136,8 @@ class MocafeQLAgent extends QLAgent {
   Map<MocafeQVector, double> fetchHistoricalQValues(MocafeState state) {
     final Map<MocafeQVector, double> qValuesOfState = {};
     for (Action action in state.actionsAvailable) {
-      for (ArgSet argSet in argSets) {
+      for (ArgSet argSet
+          in argSets.where((argset) => action.isCompatibleWithArgSet(argset))) {
         qValuesOfState[MocafeQVector(
           mocafeState: state,
           action: action,
