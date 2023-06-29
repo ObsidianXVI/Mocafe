@@ -13,6 +13,7 @@ void main(List<String> args) async {
       Observatory(observatoryConfigs: ObservatoryConfigs());
   final Timeline timeline = Timeline(
     timelineConfigs: TimelineConfigs(
+      testName: 'alpha_1_',
       liveReport: true,
       monitoredAttr: {
         'prevStat': (EnvReport report) => report.actionResult.previouState,
@@ -34,6 +35,7 @@ void main(List<String> args) async {
       actionSpace: ActionSpace(actions: [
         IncreaseDrinkPrice(),
         DecreaseDrinkPrice(),
+        MaintainDrinkPrice(),
       ]),
       paramSpace: ParamSpace(argSets: [
         IncreaseDrinkPriceArgSet.by10(),
@@ -42,6 +44,7 @@ void main(List<String> args) async {
         IncreaseDrinkPriceArgSet.by40(),
         IncreaseDrinkPriceArgSet.by50(),
         IncreaseDrinkPriceArgSet.by100(),
+        MaintainDrinkPriceArgSet(),
         DecreaseDrinkPriceArgSet.by10(),
         DecreaseDrinkPriceArgSet.by20(),
         DecreaseDrinkPriceArgSet.by30(),
@@ -57,27 +60,48 @@ void main(List<String> args) async {
         epsilonValue: 0.8,
         episodes: 10,
         epochs: 1,
-        maxTimesteps: 4000,
+        maxTimesteps: 5000,
       ))
     ..globalState.currentPrice = 5
     ..globalState.customerCount = 6;
 
   // Configure hooks
-  mocafeEnv.addHook(
-    TimestepHook(
-      env: mocafeEnv,
-      body: (Environment env) {
-        env as MocafeEnv;
+  mocafeEnv
+    ..addHook(
+      TimestepHook(
+        env: mocafeEnv,
+        body: (Environment env) {
+          env as MocafeEnv;
 
-        // calculate the profits made
-        env.globalState.previousProfit =
-            env.globalState.customerCount * env.globalState.currentPrice;
-        // refresh the consumer count based on the demand curve
-        env.globalState.customerCount =
-            (16 - 2 * env.globalState.currentPrice).round();
-      },
-    ),
-  );
+          // calculate the profits made
+          env.globalState.previousProfit =
+              env.globalState.customerCount * env.globalState.currentPrice;
+          // refresh the consumer count based on the demand curve
+          env.globalState.customerCount =
+              (16 - 2 * env.globalState.currentPrice).round();
+        },
+      ),
+    )
+    ..addHook(
+      EpisodeEndHook(
+        env: mocafeEnv,
+        pause: const Duration(seconds: 2),
+        body: (Environment env, QLAgent qlAgent) {
+          env as MocafeEnv;
+          qlAgent as MocafeQLAgent;
+          print("\n=== Finished Ep ${qlAgent.currentEpisode} ===\n\n");
+        },
+        asyncBody: (Environment env, QLAgent qlAgent) async {
+          env as MocafeEnv;
+          qlAgent as MocafeQLAgent;
+          await timeline.exportCSV(qlAgent.currentEpisode.toString());
+          timeline.resetAndReinitialise();
+          env.globalState
+            ..currentPrice = 5
+            ..customerCount = 6;
+        },
+      ),
+    );
 
   // Initialise the agent
   final MocafeQLAgent qlAgent = MocafeQLAgent(
@@ -87,5 +111,5 @@ void main(List<String> args) async {
 
   await qlAgent.run(MocafeState.current(mocafeEnv));
 
-  timeline.exportCSV('test_1_1');
+  // timeline.exportCSV('test_1_1');
 }

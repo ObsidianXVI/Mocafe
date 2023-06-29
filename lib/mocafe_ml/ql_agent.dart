@@ -15,9 +15,10 @@ class MocafeQLAgent extends QLAgent {
     try {
       state ??= MocafeState.current(env);
       state as MocafeState;
-      if (state.isTerminal || env.envTimestep == runConfigs.maxTimesteps) {
+      /* if (state.isTerminal || env.envTimestep == runConfigs.maxTimesteps) {
         throw TerminalStateException();
-      }
+      } */
+      if (state.isTerminal) throw TerminalStateException();
       // fetch all available Q-values
       final Map<MocafeQVector, double> qValuesOfState =
           fetchHistoricalQValues(state);

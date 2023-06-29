@@ -1,5 +1,23 @@
 part of mocafe.ml;
 
+class MaintainDrinkPrice extends Action<MaintainDrinkPriceArgSet> {
+  MaintainDrinkPrice() : super(body: (ArgSet argSet, Environment env) {});
+}
+
+class MaintainDrinkPriceArgSet extends ArgSet {
+  const MaintainDrinkPriceArgSet() : super(values: const [], dimensions: 0);
+
+  @override
+  String toInstanceLabel() {
+    return "MaintainDPArgSet<>";
+  }
+
+  @override
+  bool equalityComparator(Object other) {
+    return other is MaintainDrinkPriceArgSet;
+  }
+}
+
 class IncreaseDrinkPrice extends Action<IncreaseDrinkPriceArgSet> {
   IncreaseDrinkPrice()
       : super(body: (ArgSet argSet, Environment env) {

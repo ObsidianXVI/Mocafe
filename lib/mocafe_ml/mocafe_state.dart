@@ -16,7 +16,7 @@ class MocafeState extends State {
         customerCount = env.globalState.customerCount,
         super(
           actionsAvailable: env.actionSpace.actions,
-          isTerminal: env.envTimestep == 10000,
+          isTerminal: false,
           dimensions: 2,
           values: [env.globalState.customerCount, env.globalState.currentPrice],
         );
