@@ -5,7 +5,7 @@ import 'package:mocafe/mocafe_ml/mocafe_ml.dart';
 
 bool cafeIsOpen = false;
 
-void main(List<String> args) {
+void main(List<String> args) async {
   cafeIsOpen = true;
 
   // Set up logging via Observatory, Timeline
@@ -57,6 +57,7 @@ void main(List<String> args) {
         epsilonValue: 0.8,
         episodes: 10,
         epochs: 1,
+        maxTimesteps: 4000,
       ))
     ..globalState.currentPrice = 5
     ..globalState.customerCount = 6;
@@ -84,5 +85,7 @@ void main(List<String> args) {
     runConfigs: mocafeEnv.qlRunConfigs,
   );
 
-  qlAgent.run(MocafeState.current(mocafeEnv));
+  await qlAgent.run(MocafeState.current(mocafeEnv));
+
+  timeline.exportCSV('test_1_1');
 }

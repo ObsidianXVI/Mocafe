@@ -15,7 +15,9 @@ class MocafeQLAgent extends QLAgent {
     try {
       state ??= MocafeState.current(env);
       state as MocafeState;
-      if (state.isTerminal) throw TerminalStateException();
+      if (state.isTerminal || env.envTimestep == runConfigs.maxTimesteps) {
+        throw TerminalStateException();
+      }
       // fetch all available Q-values
       final Map<MocafeQVector, double> qValuesOfState =
           fetchHistoricalQValues(state);
@@ -25,7 +27,7 @@ class MocafeQLAgent extends QLAgent {
           qValuesOfState.keys.elementAt(comboIndex).action;
       // apply action-selection policy to pick action
       final Action selectedAction =
-          select<Action>(state.actionsAvailable, optimalAction);
+          selectEpsilonGreedy<Action>(state.actionsAvailable, optimalAction);
       final bool selectedActionIsRand = selectedAction == optimalAction;
 
       // fetch all argsets compatible with the chosen action
@@ -40,13 +42,6 @@ class MocafeQLAgent extends QLAgent {
             fetchHistoricalQValue(state, selectedAction, argSet);
         argSetQValues.addAll({historicalQValue: argSet});
       }
-/*       for (int i = 0; i < qValuesOfState.keys.length; i++) {
-        final MocafeQVector mocafeQVector = qValuesOfState.keys.elementAt(i);
-        if (selectedAction.isCompatibleWithArgSet(mocafeQVector.argSet)) {
-          argSetQValues.addAll({i: qValuesOfState.values.elementAt(i)});
-          compatibleArgSets.add(mocafeQVector.argSet);
-        }
-      } */
 
       // pick the argset with the highest Q-value
       final ArgSet optimalArgSet = argSetQValues.values
@@ -151,7 +146,7 @@ class MocafeQLAgent extends QLAgent {
   /// This method defines the action selection policy. Set [runConfigs.epsilonValue] to 1
   /// to obtain ε-greedy/optimal policy. A higher epsilon value favours exploitation
   /// over exploration.
-  T select<T>(List<T> possibleChoices, T optimalChoice) {
+  T selectEpsilonGreedy<T>(List<T> possibleChoices, T optimalChoice) {
     final math.Random random = math.Random();
     if (random.nextDouble() > runConfigs.epsilonValue) {
       return possibleChoices[random.nextInt(possibleChoices.length)];
